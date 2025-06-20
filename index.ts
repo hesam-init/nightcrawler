@@ -1,13 +1,8 @@
 import { envValidation } from '@/bootstrap/env.validation';
+import { FileFramework } from '@/frameworks/file/file.framework';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import { parse as csvParse } from 'csv-parse/sync';
-import * as fs from 'fs';
-
-interface ChannelType {
-   URL: string;
-   AllMessagesFlag: boolean;
-}
+import type { CsvSchema } from 'types/env';
 
 interface ConfigFileIds {
    [key: string]: number;
@@ -21,7 +16,7 @@ interface MyRegex {
    [key: string]: string;
 }
 
-class V2RayCollector {
+export class V2RayCollector {
    private maxMessages = 100;
    private configsNames = "@Vip_Security join us";
    private configs: Configs = {
@@ -57,27 +52,27 @@ class V2RayCollector {
       try {
          console.log("Starting V2Ray config collection...");
 
-         const fileData = this.readFileContent("channels.csv");
-         const channels = this.parseCSV(fileData);
+         const fileData = FileFramework.readFileContent("channels.csv");
+         const channels = FileFramework.parseCSV<CsvSchema>(fileData);
 
          // Loop through the channels list
          for (const channel of channels) {
             // Change URL to Telegram web URL
-            channel.URL = this.changeUrlToTelegramWebUrl(channel.URL);
+            channel.url = this.changeUrlToTelegramWebUrl(channel.url);
 
-            console.log(channel.URL);
+            console.log(channel.url);
 
 
             // Get channel messages
-            const response = await this.httpRequest(channel.URL);
+            const response = await this.httpRequest(channel.url);
             const $ = cheerio.load(response);
 
             console.log("\n\n---------------------------------------");
-            console.log(`Crawling ${channel.URL}`);
+            console.log(`Crawling ${channel.url}`);
 
-            await this.crawlForV2ray($, channel.URL, channel.AllMessagesFlag);
+            await this.crawlForV2ray($, channel.url, channel.allMessageFlag);
 
-            console.log(`Crawled ${channel.URL}!`);
+            console.log(`Crawled ${channel.url}!`);
             console.log("---------------------------------------\n\n");
          }
 
@@ -102,7 +97,7 @@ class V2RayCollector {
             }
 
             lines = lines.trim();
-            this.writeToFile(lines, `${proto}_iran.txt`);
+            FileFramework.writeToFile(lines, `${proto}_iran.txt`);
          }
 
          console.log("All Done :D");
@@ -344,32 +339,6 @@ class V2RayCollector {
       return input;
    }
 
-   private readFileContent(filePath: string): string {
-      try {
-         return fs.readFileSync(filePath, 'utf-8');
-      } catch (error) {
-         console.error(`Error reading file ${filePath}:`, error);
-         throw error;
-      }
-   }
-
-   private parseCSV(content: string): ChannelType[] {
-      try {
-         const records = csvParse(content, {
-            columns: true,
-            skip_empty_lines: true
-         });
-
-         return records.map((record: any) => ({
-            URL: record.URL,
-            AllMessagesFlag: record.AllMessagesFlag === 'true' || record.AllMessagesFlag === true
-         }));
-      } catch (error) {
-         console.error("Error parsing CSV:", error);
-         throw error;
-      }
-   }
-
    private reverse<T>(array: T[]): T[] {
       const result = [...array];
       for (let i = 0; i < result.length / 2; i++) {
@@ -384,15 +353,6 @@ class V2RayCollector {
       const uniqueLines = [...new Set(lines)].sort();
       return uniqueLines.join('\n');
    }
-
-   private writeToFile(fileContent: string, filePath: string): void {
-      try {
-         fs.writeFileSync(filePath, fileContent, 'utf-8');
-         console.log(`File ${filePath} written successfully`);
-      } catch (error) {
-         console.error("Error writing file:", error);
-      }
-   }
 }
 
 // Usage example
@@ -406,8 +366,6 @@ async function main() {
    await collector.main();
 }
 
-// Export for use as module
-export { V2RayCollector };
 
 // Run if this file is executed directly
 if (require.main === module) {
