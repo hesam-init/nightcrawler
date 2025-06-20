@@ -23,29 +23,25 @@ const defaultConfig: Partial<CustomAxiosRequestConfig> = {
    errorMessage: "Error",
 };
 
-const requestTimeout = 15000;
 
 export type ServiceConfig = {
    debug?: boolean;
-   xml?: boolean;
 };
 
-export class HttpService {
+const requestTimeout = 15000;
+
+export class TelegramFramework {
+   private baseUrl = process.env.TELEGRAM_BASE_URL;
+
    public http: AxiosInstance;
-   private baseUrl = process.env.MODEM_IP;
-
    public debugMode = false;
-   public xmlMode = false;
-
    public sessionCookie = "";
-   public verificationToken = "";
 
    constructor(config?: ServiceConfig) {
       this.debugMode = config?.debug || false;
-      this.xmlMode = config?.xml || false;
 
       this.http = Axios.create({
-         baseURL: `${this.baseUrl}`,
+         // baseURL: this.baseUrl || "",
          timeout: requestTimeout,
       });
 
@@ -64,19 +60,8 @@ export class HttpService {
       this.sessionCookie = cookie;
    };
 
-   public setVerificationToken = (token: string) => {
-      this.verificationToken = token;
-   };
-
    private handleRequest = (config: InternalAxiosRequestConfig) => {
       config.headers.Cookie = this.sessionCookie || undefined;
-
-      config.headers.__RequestVerificationToken =
-         this.verificationToken || undefined;
-
-      if (this.xmlMode) {
-         config.headers["Content-Type"] = "application/xml";
-      }
 
       return config;
    };
@@ -114,7 +99,7 @@ export class HttpService {
       return {
          data: response.data,
          status: response.status,
-         fullResponse: config?.fullResponse ? response : undefined,
+         // fullResponse: config?.fullResponse ? response : undefined,
       };
    }
 
@@ -153,8 +138,4 @@ export class HttpService {
 
       return response.data;
    }
-
-
-
-
 }
