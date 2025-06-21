@@ -16,7 +16,7 @@ interface MyRegex {
 }
 
 const httpService = new TelegramFramework({
-   debug: true
+   debug: false
 })
 
 export class V2RayCollector {
@@ -55,7 +55,7 @@ export class V2RayCollector {
       try {
          console.log("Starting V2Ray config collection...");
 
-         const fileData = FileFramework.readFileContent("channels.csv");
+         const fileData = await FileFramework.readFileContent("channels.csv");
          const channels = FileFramework.parseCSV<CsvSchema>(fileData);
 
          // Loop through the channels list
@@ -65,6 +65,7 @@ export class V2RayCollector {
 
             const response = await httpService.get<string>(channel.url);
 
+            await FileFramework.writeHtmlToFile(response.data)
             const $ = cheerio.load(response.data);
 
             console.log("\n\n---------------------------------------");
@@ -79,26 +80,26 @@ export class V2RayCollector {
          console.log("Creating output files!");
 
          // Process configs
-         for (const [proto, configContent] of Object.entries(this.configs)) {
-            let lines = this.removeDuplicate(configContent);
-            lines = this.addConfigNames(lines, proto);
+         // for (const [proto, configContent] of Object.entries(this.configs)) {
+         //    let lines = this.removeDuplicate(configContent);
+         //    lines = this.addConfigNames(lines, proto);
 
-            if (this.sort) {
-               // From latest to oldest mode
-               const linesArr = lines.split('\n');
-               const reversed = this.reverse(linesArr);
-               lines = reversed.join('\n');
-            } else {
-               // From oldest to latest mode
-               const linesArr = lines.split('\n');
-               const reversed1 = this.reverse(linesArr);
-               const reversed2 = this.reverse(reversed1);
-               lines = reversed2.join('\n');
-            }
+         //    if (this.sort) {
+         //       // From latest to oldest mode
+         //       const linesArr = lines.split('\n');
+         //       const reversed = this.reverse(linesArr);
+         //       lines = reversed.join('\n');
+         //    } else {
+         //       // From oldest to latest mode
+         //       const linesArr = lines.split('\n');
+         //       const reversed1 = this.reverse(linesArr);
+         //       const reversed2 = this.reverse(reversed1);
+         //       lines = reversed2.join('\n');
+         //    }
 
-            lines = lines.trim();
-            FileFramework.writeToFile(lines, `${proto}_iran.txt`);
-         }
+         //    lines = lines.trim();
+         //    FileFramework.writeToFile(lines, `${proto}_iran.txt`);
+         // }
 
          console.log("All Done :D");
       } catch (error) {
@@ -107,48 +108,11 @@ export class V2RayCollector {
    }
 
    private async loadMore(link: string): Promise<cheerio.CheerioAPI> {
-      console.log(link);
-
       const response = await httpService.get<string>(link);
 
       return cheerio.load(response.data);
    }
 
-   private addConfigNames(config: string, configType: string): string {
-      const configs = config.split('\n');
-      let newConfigs = "";
-
-      for (const [protoRegex, regexValue] of Object.entries(this.myRegex)) {
-         for (let extractedConfig of configs) {
-            const regex = new RegExp(regexValue, 'g');
-            const matches = regex.exec(extractedConfig);
-
-            if (matches && matches.length > 0) {
-               extractedConfig = extractedConfig.replace(/ /g, '');
-
-               if (extractedConfig !== "") {
-                  if (protoRegex === "vmess") {
-                     extractedConfig = this.editVmessPs(extractedConfig, configType, true);
-                     if (extractedConfig !== "") {
-                        newConfigs += extractedConfig + '\n';
-                     }
-                  } else if (protoRegex === "ss") {
-                     const prefix = matches[0].split("ss://")[0];
-                     if (prefix === "") {
-                        this.configFileIds[configType] += 1;
-                        newConfigs += extractedConfig + this.configsNames + " - " + this.configFileIds[configType] + '\n';
-                     }
-                  } else {
-                     this.configFileIds[configType] += 1;
-                     newConfigs += extractedConfig + this.configsNames + " - " + this.configFileIds[configType] + '\n';
-                  }
-               }
-            }
-         }
-      }
-
-      return newConfigs;
-   }
 
    private async crawlForV2ray($: cheerio.CheerioAPI, channelLink: string, hasAllMessagesFlag: boolean): Promise<void> {
       // Update DOM to include more messages
@@ -234,6 +198,42 @@ export class V2RayCollector {
             }
          });
       }
+   }
+
+   private addConfigNames(config: string, configType: string): string {
+      const configs = config.split('\n');
+      let newConfigs = "";
+
+      for (const [protoRegex, regexValue] of Object.entries(this.myRegex)) {
+         for (let extractedConfig of configs) {
+            const regex = new RegExp(regexValue, 'g');
+            const matches = regex.exec(extractedConfig);
+
+            if (matches && matches.length > 0) {
+               extractedConfig = extractedConfig.replace(/ /g, '');
+
+               if (extractedConfig !== "") {
+                  if (protoRegex === "vmess") {
+                     extractedConfig = this.editVmessPs(extractedConfig, configType, true);
+                     if (extractedConfig !== "") {
+                        newConfigs += extractedConfig + '\n';
+                     }
+                  } else if (protoRegex === "ss") {
+                     const prefix = matches[0].split("ss://")[0];
+                     if (prefix === "") {
+                        this.configFileIds[configType] += 1;
+                        newConfigs += extractedConfig + this.configsNames + " - " + this.configFileIds[configType] + '\n';
+                     }
+                  } else {
+                     this.configFileIds[configType] += 1;
+                     newConfigs += extractedConfig + this.configsNames + " - " + this.configFileIds[configType] + '\n';
+                  }
+               }
+            }
+         }
+      }
+
+      return newConfigs;
    }
 
    private extractConfig(txt: string, tempConfigs: string[]): string {

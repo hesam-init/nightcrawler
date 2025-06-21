@@ -5,6 +5,7 @@ node_modules
 out
 dist
 *.tgz
+html-logs
 
 # code coverage
 coverage
