@@ -41,7 +41,7 @@ export class TelegramFramework {
       this.debugMode = config?.debug || false;
 
       this.http = Axios.create({
-         // baseURL: this.baseUrl || "",
+         baseURL: this.baseUrl || "",
          timeout: requestTimeout,
       });
 
@@ -62,6 +62,10 @@ export class TelegramFramework {
 
    private handleRequest = (config: InternalAxiosRequestConfig) => {
       config.headers.Cookie = this.sessionCookie || undefined;
+
+      if (this.debugMode) {
+         console.log("Request Config:", config.url);
+      }
 
       return config;
    };
@@ -91,10 +95,6 @@ export class TelegramFramework {
    ): Promise<ApiResponse<T>> {
       const finalConfig = { ...defaultConfig, ...config };
       const response = await this.http.get(url, finalConfig);
-
-      if (this.debugMode) {
-         console.log(response);
-      }
 
       return {
          data: response.data,

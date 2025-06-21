@@ -15,8 +15,8 @@ interface MyRegex {
    [key: string]: string;
 }
 
-const httpService = new TelegramFramework({
-   debug: false
+const telegramService = new TelegramFramework({
+   debug: true
 })
 
 export class V2RayCollector {
@@ -58,26 +58,45 @@ export class V2RayCollector {
          const fileData = await FileFramework.readFileContent("channels.csv");
          const channels = FileFramework.parseCSV<CsvSchema>(fileData);
 
-         // Loop through the channels list
+         // NOTE: Loop through the channels list
          for (const channel of channels) {
-            // Change URL to Telegram web URL
-            channel.url = this.changeUrlToTelegramWebUrl(channel.url);
-
-            const response = await httpService.get<string>(channel.url);
+            // const paginatedLink = channel.id + "?before=" + 31400;
+            const response = await telegramService.get<string>(channel.id);
 
             await FileFramework.writeHtmlToFile(response.data)
+
             const $ = cheerio.load(response.data);
 
+            const messages = $('.tgme_widget_message_wrap').length;
+            const firstMessage = $('.tgme_widget_message_wrap .js-widget_message').first();
+            const lastMessage = $('.tgme_widget_message_wrap .js-widget_message').last();
+            const currentPage = lastMessage.attr('data-post')?.split("/")[1]
+
+            console.log(currentPage);
+
+
+            console.log(firstMessage.attr('data-post'));
+
+
+            const link = lastMessage.attr('data-post');
+
+            const number = Number(link?.split('/')[1]);
+
+            console.log(link);
+
+
+
             console.log("\n\n---------------------------------------");
-            console.log(`Crawling ${channel.url}`);
+            console.log(`Crawling ${channel.id}`);
 
-            await this.crawlForV2ray($, channel.url, channel.allMessageFlag);
-
-            console.log(`Crawled ${channel.url}!`);
+            console.log(`Crawled ${channel.id}!`);
             console.log("---------------------------------------\n\n");
          }
 
-         console.log("Creating output files!");
+         // console.log("Creating output files!");
+
+         // console.log(this.configs);
+
 
          // Process configs
          // for (const [proto, configContent] of Object.entries(this.configs)) {
@@ -101,27 +120,31 @@ export class V2RayCollector {
          //    FileFramework.writeToFile(lines, `${proto}_iran.txt`);
          // }
 
-         console.log("All Done :D");
+         // console.log("All Done :D");
       } catch (error) {
          console.error("Error in main:", error);
       }
    }
 
    private async loadMore(link: string): Promise<cheerio.CheerioAPI> {
-      const response = await httpService.get<string>(link);
+      const response = await telegramService.get<string>(link);
 
       return cheerio.load(response.data);
    }
 
 
    private async crawlForV2ray($: cheerio.CheerioAPI, channelLink: string, hasAllMessagesFlag: boolean): Promise<void> {
-      // Update DOM to include more messages
+      // const data = $('.').last().attr('data-post');
       const messages = $('.tgme_widget_message_wrap').length;
       const lastMessage = $('.tgme_widget_message_wrap .js-widget_message').last();
       const link = lastMessage.attr('data-post');
+      const number = Number(link?.split('/')[1]);
+
+      console.log(number);
 
       if (messages < this.maxMessages && link) {
-         const number = link.split('/')[1];
+         const number = Number(link.split('/')[1]);
+
          $ = await this.getMessages(this.maxMessages, $, number, channelLink);
       }
 
@@ -129,7 +152,10 @@ export class V2RayCollector {
       if (hasAllMessagesFlag) {
          // Get all messages and check for V2Ray configs
          $('.tgme_widget_message_text').each((j, element) => {
+
+
             let messageText = $(element).html() || '';
+            // console.log(messageText);
             let str = messageText.replace(/<br\/?>/g, '\n');
             const tempDoc = cheerio.load(str);
             messageText = tempDoc.text();
@@ -197,6 +223,31 @@ export class V2RayCollector {
                }
             }
          });
+      }
+   }
+
+   private async getMessages(length: number, $: cheerio.CheerioAPI, number: number, channel: string): Promise<cheerio.CheerioAPI> {
+      const newDoc = await this.loadMore(channel + "?before=" + number);
+
+      // Merge the documents
+      const body1 = $.html();
+      const body2 = newDoc.html();
+      const combined = cheerio.load(body1 + body2);
+
+      const messages = combined('.js-widget_message_wrap').length;
+
+      if (messages > length) {
+         return combined;
+      } else {
+         const num = number;
+         const n = num - 21;
+         if (n > 0) {
+            const ns = n;
+
+            return await this.getMessages(length, combined, ns, channel);
+         } else {
+            return combined;
+         }
       }
    }
 
@@ -295,39 +346,20 @@ export class V2RayCollector {
       return "";
    }
 
-   private async getMessages(length: number, $: cheerio.CheerioAPI, number: string, channel: string): Promise<cheerio.CheerioAPI> {
-      const newDoc = await this.loadMore(channel + "?before=" + number);
-
-      // Merge the documents
-      const body1 = $.html();
-      const body2 = newDoc.html();
-      const combined = cheerio.load(body1 + body2);
-
-      const messages = combined('.js-widget_message_wrap').length;
-
-      if (messages > length) {
-         return combined;
-      } else {
-         const num = parseInt(number);
-         const n = num - 21;
-         if (n > 0) {
-            const ns = n.toString();
-            return await this.getMessages(length, combined, ns, channel);
-         } else {
-            return combined;
-         }
-      }
-   }
-
-   // Utility functions
    private changeUrlToTelegramWebUrl(input: string): string {
       if (!input.includes("/s/")) {
          const index = input.indexOf("/t.me/");
+
+         console.log(index);
+
+
          if (index !== -1) {
             const modifiedURL = input.substring(0, index + "/t.me/".length) + "s/" + input.substring(index + "/t.me/".length);
+
             return modifiedURL;
          }
       }
+
       return input;
    }
 

@@ -5,6 +5,6 @@ declare module "bun" {
 }
 
 export type CsvSchema = Array<{
-   url: string;
+   id: string;
    allMessageFlag: boolean
 }>
