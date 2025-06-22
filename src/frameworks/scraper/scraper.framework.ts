@@ -21,6 +21,7 @@ const telegramService = new TelegramFramework({
 
 export class V2RayCollector {
    private maxMessages = 100;
+   private maxPage = 10;
    private configsNames = "@Vip_Security join us";
    private configs: Configs = {
       ss: "",
@@ -60,31 +61,27 @@ export class V2RayCollector {
 
          // NOTE: Loop through the channels list
          for (const channel of channels) {
-            // const paginatedLink = channel.id + "?before=" + 31400;
-            const response = await telegramService.get<string>(channel.id);
+            let page = 0;
 
-            await FileFramework.writeHtmlToFile(response.data)
+            const $ = cheerio.load(``);
 
-            const $ = cheerio.load(response.data);
+            for (let i = 0; i < this.maxPage; i++) {
+               const paginatedLink = `${channel.id}${page === 0 ? "" : `?before=${page - 21}`}`;
+               const response = await telegramService.get<string>(paginatedLink);
 
-            const messages = $('.tgme_widget_message_wrap').length;
-            const firstMessage = $('.tgme_widget_message_wrap .js-widget_message').first();
-            const lastMessage = $('.tgme_widget_message_wrap .js-widget_message').last();
-            const currentPage = lastMessage.attr('data-post')?.split("/")[1]
+               const body = cheerio.load(response.data);
 
-            console.log(currentPage);
+               // $.merge($, body.html());
 
+               const messages = body('.tgme_widget_message_wrap').length;
+               const firstMessage = body('.tgme_widget_message_wrap .js-widget_message').first();
+               const lastMessage = body('.tgme_widget_message_wrap .js-widget_message').last();
+               const currentPage = Number(lastMessage.attr('data-post')?.split("/")[1]) || 0;
 
-            console.log(firstMessage.attr('data-post'));
+               page = currentPage;
+            }
 
-
-            const link = lastMessage.attr('data-post');
-
-            const number = Number(link?.split('/')[1]);
-
-            console.log(link);
-
-
+            await FileFramework.writeHtmlToFile($.html());
 
             console.log("\n\n---------------------------------------");
             console.log(`Crawling ${channel.id}`);
@@ -124,6 +121,10 @@ export class V2RayCollector {
       } catch (error) {
          console.error("Error in main:", error);
       }
+   }
+
+   private async crawl(channelLink?: string, hasAllMessagesFlag: boolean = false): Promise<void> {
+
    }
 
    private async loadMore(link: string): Promise<cheerio.CheerioAPI> {

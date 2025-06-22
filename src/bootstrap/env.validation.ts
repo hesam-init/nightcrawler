@@ -15,6 +15,13 @@ export const zodEnv = z.object({
          message: "TELEGRAM_BASE_URL must be a valid URL",
       }),
 
+   PROXY_URL: z.
+      string({
+         description: "HTTP proxy for requests"
+      }).
+      regex(/^http:\/\/.+:\d+$/, "Proxy must start with http:// and include a port (e.g., http://localhost:2080)")
+      .optional()
+
    // .min(1, "MODEM_PASSWORD is required and cannot be empty"),
    // MODEM_MODEL: z.enum(SUPPORTED_MODELS, {
    //    required_error: "MODEM_MODEL is required",

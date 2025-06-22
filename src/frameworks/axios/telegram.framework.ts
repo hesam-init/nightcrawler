@@ -1,10 +1,12 @@
 import Axios, {
    type AxiosError,
    type AxiosInstance,
+   type AxiosProxyConfig,
    type AxiosRequestConfig,
    type AxiosResponse,
    type InternalAxiosRequestConfig,
 } from "axios";
+import chalk from "chalk";
 import type { ApiResponse } from "./telegram.types";
 
 export type CustomAxiosRequestConfig = AxiosRequestConfig & {
@@ -33,6 +35,7 @@ const requestTimeout = 15000;
 export class TelegramFramework {
    private baseUrl = process.env.TELEGRAM_BASE_URL;
 
+   private proxy?: AxiosProxyConfig;
    public http: AxiosInstance;
    public debugMode = false;
    public sessionCookie = "";
@@ -40,9 +43,24 @@ export class TelegramFramework {
    constructor(config?: ServiceConfig) {
       this.debugMode = config?.debug || false;
 
+      if (process.env.PROXY_URL) {
+         console.log(
+            chalk.bgGreen.green.bold(`Proxy : ${process.env.PROXY_URL} \n`),
+         );
+
+         const url = new URL(process.env.PROXY_URL);
+
+         this.proxy = {
+            host: url.hostname,
+            port: parseInt(url.port),
+            protocol: url.protocol.replace(":", "") as "http" | "https",
+         };
+      }
+
       this.http = Axios.create({
          baseURL: this.baseUrl || "",
          timeout: requestTimeout,
+         proxy: this.proxy
       });
 
       this.http.interceptors.request.use(
