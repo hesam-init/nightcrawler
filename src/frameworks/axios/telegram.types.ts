@@ -4,5 +4,5 @@ export type ApiResponse<T = string> = {
    readonly status?: number | null;
    readonly message?: string | null;
    data: T;
-   fullResponse?: AxiosResponse<T>;
+   config?: AxiosResponse<T>;
 };

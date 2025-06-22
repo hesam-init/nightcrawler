@@ -22,9 +22,9 @@ const telegramService = new TelegramFramework({
 const PROTCOLS = ["vless", "vmess", "ss", "trojan"]
 
 export class V2RayCollector {
-   private localScrape: boolean = true;
+   private telegram: boolean = true;
 
-   private maxPage: number = 2;
+   private maxPage: number = 12;
    private maxMessages: number = 100;
    private configsNames: string = "@Vip_Security join us";
 
@@ -62,54 +62,57 @@ export class V2RayCollector {
          console.log("Starting V2Ray config collection...");
 
          // NOTE: Loop through the channels list
-         const htmlData = await FileFramework.readFileContent("html-logs/meli_proxy.html");
+         // const htmlData = await FileFramework.readFileContent("html-logs/meli_proxy.html");
 
-         const $ = cheerio.load(htmlData);
+         // const $ = cheerio.load(htmlData);
 
-         let arrayData: Array<string> = [];
+         // let arrayData: Array<string> = [];
 
-         $('.tgme_widget_message_text').each((j, element) => {
-            let messageText = $(element);
-            let replacedMessage = messageText.html()?.replace(/<br\/?>/g, '\n');
-            const tempMessage = cheerio.load(replacedMessage || "");
-            const correctMessage = tempMessage.text();
-            const lines = Array(correctMessage.trim().split('\n'));
+         // $('.tgme_widget_message_text').each((j, element) => {
+         //    let messageText = $(element);
+         //    let replacedMessage = messageText.html()?.replace(/<br\/?>/g, '\n');
+         //    const tempMessage = cheerio.load(replacedMessage || "");
+         //    const correctMessage = tempMessage.text();
+         //    const lines = Array(correctMessage.trim().split('\n'));
 
-            const allLinksShort = lines
-               .filter(Array.isArray)
-               .flatMap(items => {
-                  const allProtocolsMatches = items.filter(data => {
-                     return PROTCOLS.some(protocol => data.startsWith(protocol))
-                  })
+         //    const allLinksShort = lines
+         //       .filter(Array.isArray)
+         //       .flatMap(items => {
+         //          const allProtocolsMatches = items.filter(data => {
+         //             return PROTCOLS.some(protocol => data.startsWith(protocol))
+         //          })
 
-                  arrayData.push(...allProtocolsMatches)
+         //          arrayData.push(...allProtocolsMatches)
 
-                  return Array(allProtocolsMatches).flat();
-               });
-         });
+         //          return Array(allProtocolsMatches).flat();
+         //       });
+         // });
 
          // await FileFramework.writeToFile(arrayData.join("\n"), "data.txt");
 
          // NOTE: Loop through the channels list
-         if (!this.localScrape) {
+         if (this.telegram) {
             const fileData = await FileFramework.readFileContent("channels.csv");
             const channels = FileFramework.parseCSV<CsvSchema>(fileData);
 
             for (const channel of channels) {
-               let page = 0;
+               let page: number = 0;
+               let arrayData: Array<string> = [];
 
                const $ = cheerio.load('<div id="all-messages"></div>');
 
                for (let i = 0; i < this.maxPage; i++) {
                   const paginatedLink = `${channel.id}${page === 0 ? "" : `?before=${page - 21}`}`;
-                  const response = await telegramService.get<string>(paginatedLink);
+                  const response = await telegramService.get<string>(paginatedLink, {
+                     returnConfig: true
+                  });
 
-                  const body = cheerio.load(response.data);
+                  // console.log(response.config?.status);
+
+                  const body = cheerio.load(response.data || "");
 
                   body('.tgme_widget_message_wrap').each((index, element) => {
                      $('#all-messages').append(body.html(element));
-
-                     console.log(body.html(element));
                   });
 
                   const messages = body('.tgme_widget_message_wrap').length;
@@ -120,7 +123,28 @@ export class V2RayCollector {
                   page = currentPage;
                }
 
-               await FileFramework.writeHtmlToFile($.html());
+               const proxiestList = $('.tgme_widget_message_text').each((j, element) => {
+                  let messageText = $(element);
+                  let replacedMessage = messageText.html()?.replace(/<br\/?>/g, '\n');
+                  const tempMessage = cheerio.load(replacedMessage || "");
+                  const correctMessage = tempMessage.text();
+                  const lines = Array(correctMessage.trim().split('\n'));
+
+                  const allLinksShort = lines
+                     .filter(Array.isArray)
+                     .flatMap(items => {
+                        const allProtocolsMatches = items.filter(data => {
+                           return PROTCOLS.some(protocol => data.startsWith(protocol))
+                        })
+
+                        arrayData.push(...allProtocolsMatches)
+
+                        return Array(allProtocolsMatches).flat();
+                     });
+               });
+
+
+               await FileFramework.writeHtmlToFile(arrayData.join("\n"));
 
                console.log("\n\n---------------------------------------");
                console.log(`Crawling ${channel.id}`);
@@ -161,7 +185,7 @@ export class V2RayCollector {
 
          // console.log("All Done :D");
       } catch (error) {
-         console.error("Error in main:", error);
+         console.error("Error in main:", error?.message);
       }
    }
 

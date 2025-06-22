@@ -10,18 +10,11 @@ import chalk from "chalk";
 import type { ApiResponse } from "./telegram.types";
 
 export type CustomAxiosRequestConfig = AxiosRequestConfig & {
-   showSuccessToast?: boolean;
-   successMessage?: string;
-   showErrorToast?: boolean;
    errorMessage?: string;
-   fullResponse?: boolean;
-   xml?: boolean;
+   returnConfig?: boolean;
 };
 
 const defaultConfig: Partial<CustomAxiosRequestConfig> = {
-   showSuccessToast: true,
-   successMessage: "Success",
-   showErrorToast: true,
    errorMessage: "Error",
 };
 
@@ -101,10 +94,15 @@ export class TelegramFramework {
 
    private handleErrorResponse = (error: AxiosError<ApiResponse>) => {
       const config = error.config as CustomAxiosRequestConfig;
-
       const result = error.response?.data;
 
-      return Promise.reject(error);
+      // return Promise.reject(error);
+
+      console.error(
+         chalk.bgRed.white.bold(`ERROR while fetching ${config.url}`),
+      );
+
+      return undefined;
    };
 
    public async get<T>(
@@ -117,7 +115,7 @@ export class TelegramFramework {
       return {
          data: response.data,
          status: response.status,
-         // fullResponse: config?.fullResponse ? response : undefined,
+         config: config?.returnConfig ? response : undefined,
       };
    }
 
@@ -137,7 +135,7 @@ export class TelegramFramework {
       return {
          data: response.data,
          status: response.data,
-         fullResponse: config?.fullResponse ? response : undefined,
+         config: config?.returnConfig ? response : undefined,
       };
    }
 
