@@ -63,7 +63,7 @@ export class V2RayCollector {
          for (const channel of channels) {
             let page = 0;
 
-            const $ = cheerio.load(``);
+            const $ = cheerio.load('<div id="all-messages"></div>');
 
             for (let i = 0; i < this.maxPage; i++) {
                const paginatedLink = `${channel.id}${page === 0 ? "" : `?before=${page - 21}`}`;
@@ -71,7 +71,11 @@ export class V2RayCollector {
 
                const body = cheerio.load(response.data);
 
-               // $.merge($, body.html());
+               body('.tgme_widget_message_wrap').each((index, element) => {
+                  $('#all-messages').append(body.html(element));
+
+                  console.log(body.html(element));
+               });
 
                const messages = body('.tgme_widget_message_wrap').length;
                const firstMessage = body('.tgme_widget_message_wrap .js-widget_message').first();
@@ -153,7 +157,6 @@ export class V2RayCollector {
       if (hasAllMessagesFlag) {
          // Get all messages and check for V2Ray configs
          $('.tgme_widget_message_text').each((j, element) => {
-
 
             let messageText = $(element).html() || '';
             // console.log(messageText);
