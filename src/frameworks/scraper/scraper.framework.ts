@@ -59,7 +59,7 @@ export class V2RayCollector {
 
    async main(): Promise<void> {
       try {
-         console.log("Starting V2Ray config collection...");
+         console.log("Starting V2Ray config collection... \n");
 
          // NOTE: Loop through the channels list
          // const htmlData = await FileFramework.readFileContent("html-logs/meli_proxy.html");
@@ -96,18 +96,20 @@ export class V2RayCollector {
             const channels = FileFramework.parseCSV<CsvSchema>(fileData);
 
             for (const channel of channels) {
-               let page: number = 0;
+               let beforeIndex: number = 0;
                let arrayData: Array<string> = [];
 
                const $ = cheerio.load('<div id="all-messages"></div>');
 
-               for (let i = 0; i < this.maxPage; i++) {
-                  const paginatedLink = `${channel.id}${page === 0 ? "" : `?before=${page - 21}`}`;
+               let currentPage = 0;
+               while (currentPage < this.maxPage) {
+                  console.log(`Current Page => ${currentPage + 1}`);
+
+                  const paginatedLink = `${channel.id}${beforeIndex === 0 ? "" : `?before=${beforeIndex - 21}`}`;
+
                   const response = await telegramService.get<string>(paginatedLink, {
                      returnConfig: true
                   });
-
-                  // console.log(response.config?.status);
 
                   const body = cheerio.load(response.data || "");
 
@@ -118,9 +120,15 @@ export class V2RayCollector {
                   const messages = body('.tgme_widget_message_wrap').length;
                   const firstMessage = body('.tgme_widget_message_wrap .js-widget_message').first();
                   const lastMessage = body('.tgme_widget_message_wrap .js-widget_message').last();
-                  const currentPage = Number(lastMessage.attr('data-post')?.split("/")[1]) || 0;
 
-                  page = currentPage;
+                  // NOTE: return current page if page not found
+                  const nextIndex = Number(lastMessage.attr('data-post')?.split("/")[1]) || beforeIndex;
+
+                  if (beforeIndex !== nextIndex) {
+                     beforeIndex = nextIndex;
+                     currentPage++;
+                  }
+
                }
 
                const proxiestList = $('.tgme_widget_message_text').each((j, element) => {

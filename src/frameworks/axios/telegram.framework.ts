@@ -99,10 +99,10 @@ export class TelegramFramework {
       // return Promise.reject(error);
 
       console.error(
-         chalk.bgRed.white.bold(`ERROR while fetching ${config.url}`),
+         chalk.bgRed.white.bold(`ERROR while fetching ${config.url} \n`),
       );
 
-      return undefined;
+      return {};
    };
 
    public async get<T>(
