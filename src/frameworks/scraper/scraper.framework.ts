@@ -1,4 +1,5 @@
 import { FileFramework } from '@/frameworks/file/file.framework';
+import { HttpStatusCode } from 'axios';
 import chalk from 'chalk';
 import * as cheerio from 'cheerio';
 import type { CsvSchema } from 'types/env';
@@ -111,13 +112,32 @@ export class V2RayCollector {
                while (currentPage < maxPages) {
                   console.log(`Current Page => ${currentPage + 1}`);
 
-                  const paginatedLink = `${channel.id}${beforeIndex === 0 ? "" : `?before=${beforeIndex - 21}`}`;
+                  const paginatedLink = `${channel.id}${beforeIndex === 0 ? "" : `?before=${beforeIndex - 20}`}`;
 
                   const response = await telegramService.get<string>(paginatedLink, {
                      returnConfig: true
                   });
 
+                  if (response.status !== HttpStatusCode.Ok) {
+                     beforeIndex = beforeIndex;
+
+                     continue;
+                  }
+
                   const body = cheerio.load(response.data || "");
+
+                  const canonical = body('head link').filter((i, el) => {
+                     return $(el).attr('rel') === "canonical";
+                  }).attr("href");
+
+
+                  if (!canonical) {
+                     console.log(
+                        chalk.bgRed.white.bold(`Channel dont support crawling ===> ${channel.id} \n`),
+                     );
+
+                     break;
+                  }
 
                   body('.tgme_widget_message_wrap').each((index, element) => {
                      $('#all-messages').append(body.html(element));
@@ -130,7 +150,8 @@ export class V2RayCollector {
                   // NOTE: return current page if page not found
                   const nextIndex = Number(lastMessage.attr('data-post')?.split("/")[1]) || beforeIndex;
 
-                  if (nextIndex < 10 && nextIndex !== 0) {
+                  // NOTE: break if next page not exist
+                  if (nextIndex <= 20 && nextIndex !== 0) {
                      break;
                   }
 
@@ -163,11 +184,11 @@ export class V2RayCollector {
 
                await FileFramework.writeHtmlToFile(arrayData.join("\n"));
 
-               console.log("\n\n---------------------------------------");
-               console.log(`Crawling ${channel.id}`);
+               // console.log("\n\n---------------------------------------");
+               // console.log(`Crawling ${channel.id}`);
 
-               console.log(`Crawled ${channel.id}!`);
-               console.log("---------------------------------------\n\n");
+               // console.log(`Crawled ${channel.id}!`);
+               // console.log("---------------------------------------\n\n");
             }
 
          }
