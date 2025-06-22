@@ -1,4 +1,5 @@
 import { FileFramework } from '@/frameworks/file/file.framework';
+import chalk from 'chalk';
 import * as cheerio from 'cheerio';
 import type { CsvSchema } from 'types/env';
 import { TelegramFramework } from '../axios/telegram.framework';
@@ -24,9 +25,9 @@ const PROTCOLS = ["vless", "vmess", "ss", "trojan"]
 export class V2RayCollector {
    private telegram: boolean = true;
 
-   private maxPage: number = 12;
+   private maxPages: number = 1;
    private maxMessages: number = 100;
-   private configsNames: string = "@Vip_Security join us";
+   private configsNames: string = "@";
 
    private configs: Configs = {
       ss: "",
@@ -59,7 +60,7 @@ export class V2RayCollector {
 
    async main(): Promise<void> {
       try {
-         console.log("Starting V2Ray config collection... \n");
+         // console.log("Starting V2Ray config collection... \n");
 
          // NOTE: Loop through the channels list
          // const htmlData = await FileFramework.readFileContent("html-logs/meli_proxy.html");
@@ -96,13 +97,18 @@ export class V2RayCollector {
             const channels = FileFramework.parseCSV<CsvSchema>(fileData);
 
             for (const channel of channels) {
-               let beforeIndex: number = 0;
-               let arrayData: Array<string> = [];
-
                const $ = cheerio.load('<div id="all-messages"></div>');
 
-               let currentPage = 0;
-               while (currentPage < this.maxPage) {
+               let beforeIndex: number = 0;
+               let arrayData: Array<string> = [];
+               let currentPage: number = 0;
+               const maxPages: number = channel.maxPages || this.maxPages;
+
+               console.log(
+                  chalk.bgYellow.white.bold(`Crawling ===> ${channel.id} : Max Pages = ${maxPages} \n`),
+               );
+
+               while (currentPage < maxPages) {
                   console.log(`Current Page => ${currentPage + 1}`);
 
                   const paginatedLink = `${channel.id}${beforeIndex === 0 ? "" : `?before=${beforeIndex - 21}`}`;
@@ -124,11 +130,14 @@ export class V2RayCollector {
                   // NOTE: return current page if page not found
                   const nextIndex = Number(lastMessage.attr('data-post')?.split("/")[1]) || beforeIndex;
 
+                  if (nextIndex < 10 && nextIndex !== 0) {
+                     break;
+                  }
+
                   if (beforeIndex !== nextIndex) {
                      beforeIndex = nextIndex;
                      currentPage++;
                   }
-
                }
 
                const proxiestList = $('.tgme_widget_message_text').each((j, element) => {

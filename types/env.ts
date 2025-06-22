@@ -6,5 +6,5 @@ declare module "bun" {
 
 export type CsvSchema = Array<{
    id: string;
-   allMessageFlag: boolean
+   maxPages: number;
 }>
