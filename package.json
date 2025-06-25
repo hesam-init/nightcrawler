@@ -4,8 +4,11 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "start": "bun run index.ts",
-    "build": "bun build index.ts --outdir dist --target bun"
+    "dev": "bun run index.ts",
+    "start": "bun run ./dist/index.js",
+    // "build": "bun build index.ts --outdir dist --target bun",
+    "bundle": "bun run build.ts",
+    "compile": "bun build --compile --minify --target=node --sourcemap ./index.ts --outfile scraper"
   },
   "devDependencies": {
     "@types/bun": "latest"

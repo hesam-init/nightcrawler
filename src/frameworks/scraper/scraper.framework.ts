@@ -17,11 +17,12 @@ interface MyRegex {
    [key: string]: string;
 }
 
+const PROTCOLS = ["vless", "vmess", "ss", "trojan"]
+
 const telegramService = new TelegramFramework({
    debug: true
-})
+});
 
-const PROTCOLS = ["vless", "vmess", "ss", "trojan"]
 
 export class V2RayCollector {
    private telegram: boolean = true;
@@ -96,6 +97,8 @@ export class V2RayCollector {
          if (this.telegram) {
             const fileData = await FileFramework.readFileContent("channels.csv");
             const channels = FileFramework.parseCSV<CsvSchema>(fileData);
+
+            await telegramService.init()
 
             for (const channel of channels) {
                const $ = cheerio.load('<div id="all-messages"></div>');

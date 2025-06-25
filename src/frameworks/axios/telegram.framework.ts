@@ -38,10 +38,6 @@ export class TelegramFramework {
       this.debugMode = config?.debug || false;
 
       if (process.env.PROXY_URL) {
-         console.log(
-            chalk.bgGreen.green.bold(`Proxy : ${process.env.PROXY_URL} \n`),
-         );
-
          const url = new URL(process.env.PROXY_URL);
 
          this.defaultConfig.proxy = {
@@ -62,6 +58,38 @@ export class TelegramFramework {
          this.handleSuccessResponse,
          this.handleErrorResponse
       );
+   }
+
+   public async init() {
+      if (process.env.PROXY_URL) {
+         const passed = await this.testProxy();
+
+         if (!passed) {
+            throw new Error("Proxy Test Failed. Aborting initialization.");
+         }
+      }
+   }
+
+   private async testProxy() {
+      const testInstance = Axios.create(this.defaultConfig);
+
+      console.log(chalk.bgMagenta(`Testing ${process.env.PROXY_URL}`));
+
+      try {
+         const response = await testInstance.get("/getMe");
+
+         console.log(
+            chalk.bgGreen.white.bold(`Proxy Test Success: ${response.status} ${response.statusText}\n`)
+         );
+
+         return true;
+      } catch (error) {
+         console.error(
+            chalk.bgRed.white.bold(`Proxy Test Failed: ${(error as Error).message}\n`)
+         );
+
+         return false;
+      }
    }
 
    public setSessionCookie = (cookie: string) => {
