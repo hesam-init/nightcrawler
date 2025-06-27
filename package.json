@@ -7,7 +7,7 @@
     "dev": "bun run index.ts",
     "start": "bun run ./dist/index.js",
     "bundle": "bun run build.ts",
-    "compile": "bun build --compile --minify --target=node --sourcemap ./index.ts --outfile scraper",
+    "compile": "bun run bundle && bun build --compile --minify --target=node --sourcemap ./dist/index.js --outfile ./scraper",
     "lint": "biome lint ./src"
   },
   "devDependencies": {
