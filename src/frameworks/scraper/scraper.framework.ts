@@ -23,6 +23,8 @@ const telegramService = new TelegramFramework({
 	debug: true,
 });
 
+// await telegramService.init();
+
 export class V2RayCollector {
 	private telegram: boolean = true;
 

@@ -12,4 +12,10 @@ To run:
 bun start
 ```
 
-This project was created using `bun init` in bun v1.2.15. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+To bundle:
+
+```bash
+bun run bundle
+```
+
+* Bun version ^1.2.17 or higher is required

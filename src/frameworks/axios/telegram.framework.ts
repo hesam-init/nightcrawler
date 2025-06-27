@@ -70,12 +70,14 @@ export class TelegramFramework {
 	}
 
 	private async testProxy() {
-		const testInstance = Axios.create(this.defaultConfig);
+		const testInstance = Axios.create({
+			proxy: this.defaultConfig.proxy,
+		});
 
 		console.log(chalk.bgMagenta(`Testing ${process.env.PROXY_URL}`));
 
 		try {
-			const response = await testInstance.get("/getMe");
+			const response = await testInstance.get("http://google.com");
 
 			console.log(
 				chalk.bgGreen.white.bold(
