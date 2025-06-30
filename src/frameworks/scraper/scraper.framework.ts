@@ -1,7 +1,11 @@
 import { HttpStatusCode } from "axios";
 import chalk from "chalk";
 import * as cheerio from "cheerio";
-import type { CsvSchema } from "types/env";
+import type {
+	ChannelsCsvSchema,
+	ChannelsListCsvSchema,
+	CsvSchema,
+} from "types/env";
 import { FileFramework } from "@/frameworks/file/file.framework";
 import { TelegramFramework } from "../axios/telegram.framework";
 
@@ -96,8 +100,12 @@ export class V2RayCollector {
 
 			// NOTE: Loop through the channels list
 			if (this.telegram) {
-				const fileData = await FileFramework.readFileContent("channels.csv");
-				const channels = FileFramework.parseCSV<CsvSchema>(fileData);
+				const fileData = await FileFramework.readFileContent(
+					"assets/channels-list.csv"
+				);
+
+				const channels =
+					FileFramework.parseCSV<ChannelsListCsvSchema>(fileData);
 
 				await telegramService.init();
 

@@ -4,8 +4,10 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun run index.ts",
-    "start": "bun run ./dist/index.js",
+    "dev": "bun run scraper.ts",
+    "dns:dev": "bun run dns.ts",
+    "start": "bun run ./dist/scraper/scraper.js",
+    "dns:start": "bun run ./dist/dns/dns.js",
     "bundle": "bun run build.ts",
     "compile": "bun run bundle && bun build --compile --minify --target=node --sourcemap ./dist/index.js --outfile ./scraper",
     "lint": "biome lint ./src"
