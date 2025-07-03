@@ -75,8 +75,10 @@ export class TelegramFramework {
 	private async testProxy() {
 		const spinner = ora(`Testing Proxy ${env.PROXY_URL}`).start();
 
+		const proxyInstance = Axios.create(this.defaultConfig);
+
 		try {
-			const response = await this.http.get("/");
+			const response = await proxyInstance.get("/");
 
 			// console.log(
 			// 	chalk.bgGreen.white.bold(
@@ -91,18 +93,6 @@ export class TelegramFramework {
 			const error = _error as AxiosError;
 
 			spinner.fail("Proxy Test Failed");
-
-			console.error("Proxy test error:", {
-				message: error.message,
-				config: error.config
-					? {
-							url: error.config.url,
-							proxy: error.config.proxy,
-							httpAgent: !!error.config.httpAgent,
-							httpsAgent: !!error.config.httpsAgent,
-						}
-					: "No config",
-			});
 
 			// console.error(
 			// 	chalk.bgRed.white.bold(
@@ -153,8 +143,6 @@ export class TelegramFramework {
 		console.error(
 			chalk.bgRed.white.bold(`\nERROR while fetching ${config.url} \n`)
 		);
-
-		// console.log(error);
 
 		return {};
 	};

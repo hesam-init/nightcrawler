@@ -18,7 +18,7 @@ interface MyRegex {
 	[key: string]: string;
 }
 
-const PROTCOLS = ["vless", "vmess", "ss", "trojan"];
+const PROTOCOLS = ["vless", "vmess", "ss", "trojan"];
 
 const telegramService = new TelegramFramework({
 	debug: false,
@@ -84,7 +84,7 @@ export class V2RayCollector {
 			//       .filter(Array.isArray)
 			//       .flatMap(items => {
 			//          const allProtocolsMatches = items.filter(data => {
-			//             return PROTCOLS.some(protocol => data.startsWith(protocol))
+			//             return PROTOCOLS.some(protocol => data.startsWith(protocol))
 			//          })
 
 			//          arrayData.push(...allProtocolsMatches)
@@ -209,7 +209,7 @@ export class V2RayCollector {
 								.filter(Array.isArray)
 								.flatMap((items) => {
 									const allProtocolsMatches = items.filter((data) => {
-										return PROTCOLS.some((protocol) =>
+										return PROTOCOLS.some((protocol) =>
 											data.startsWith(protocol)
 										);
 									});
@@ -266,6 +266,184 @@ export class V2RayCollector {
 			// console.log("All Done :D");
 		} catch (error) {
 			console.error("Error in main:", error?.message);
+		}
+	}
+
+	async mainConcurrent(): Promise<void> {
+		try {
+			// NOTE: Loop through the channels list
+			if (this.telegram) {
+				const fileData = await FileFramework.readFileContent(
+					"assets/channels-list.csv"
+				);
+
+				const channels =
+					FileFramework.parseCSV<ChannelsListCsvSchema>(fileData);
+
+				await telegramService.init();
+
+				for (const channel of channels) {
+					console.log("\n\n---------------------------------------");
+					const spinner = ora(`Crawling ${channel.id}`).start();
+
+					const $ = cheerio.load('<div id="all-messages"></div>');
+
+					if (!channel.id) {
+						spinner.fail(`Channel ID is missing for channel: ${channel}`);
+
+						continue;
+					}
+
+					const beforeIndex: number = 0;
+					const arrayProxies: Array<string> = [];
+					const currentPage: number = 0;
+					const maxPages: number = channel.maxPages || this.maxPages;
+
+					if (maxPages <= 0) {
+						console.log(
+							chalk.bgRed.white.bold(
+								`Max Pages is less than or equal to 0 for channel: ${channel.id}`
+							)
+						);
+
+						continue;
+					}
+
+					const pageUrls: string[] = [];
+					const tempBeforeIndex = beforeIndex;
+					const tempCurrentPage = currentPage;
+
+					const generateLink = (index: number) => {
+						return `${channel.id}${index === 0 ? "" : `?before=${index - 20}`}`;
+					};
+
+					const paginatedLink = `${channel.id}${tempBeforeIndex === 0 ? "" : `?before=${tempBeforeIndex - 20}`}`;
+
+					// NOTE: get first page meta data
+					const response = await telegramService.get<string>(paginatedLink, {
+						returnConfig: true,
+					});
+
+					if (response.status === HttpStatusCode.Ok) {
+						const body = cheerio.load(response.data || "");
+
+						const canonical = body("head link")
+							.filter((_i, el) => {
+								return $(el).attr("rel") === "canonical";
+							})
+							.attr("href");
+
+						if (!canonical) {
+							break;
+						}
+
+						const lastMessage = body(
+							".tgme_widget_message_wrap .js-widget_message"
+						).last();
+
+						let nextIndex =
+							Number(lastMessage.attr("data-post")?.split("/")[1]) ||
+							tempBeforeIndex;
+
+						for (let i = 0; i < channel.maxPages; i++) {
+							nextIndex -= 20;
+
+							pageUrls.push(generateLink(nextIndex));
+						}
+					}
+
+					// NOTE: scrape all pages concurrently
+					spinner.text = `Downloading ${pageUrls.length} pages for ${channel.id}`;
+
+					const pagePromises = pageUrls.map(async (url, index) => {
+						try {
+							const response = await telegramService.get<string>(url, {
+								returnConfig: true,
+							});
+
+							if (response.status !== HttpStatusCode.Ok) {
+								return {
+									index,
+									body: null,
+									error: `HTTP ${response.status}`,
+								};
+							}
+
+							return {
+								index,
+								body: cheerio.load(response.data || ""),
+								error: null,
+							};
+						} catch (error) {
+							return { index, body: null, error: error.message };
+						}
+					});
+
+					const pageResults = await Promise.allSettled(pagePromises);
+
+					// Process results in order
+					pageResults.forEach((result, index) => {
+						if (
+							result.status === "fulfilled" &&
+							result.value.body &&
+							!result.value.error
+						) {
+							const body = result.value.body;
+
+							body(".tgme_widget_message_wrap").each((msgIndex, element) => {
+								$("#all-messages").append(body.html(element));
+							});
+						} else if (result.status === "fulfilled" && result.value.error) {
+							console.error(
+								`Error downloading page ${index + 1}:`,
+								result.value.error
+							);
+						} else {
+							console.error(
+								`Promise failed for page ${index + 1}:`,
+								result?.reason
+							);
+						}
+					});
+
+					// Extract configs from all downloaded messages
+					const proxiestList = $(".tgme_widget_message_text").each(
+						(j, element) => {
+							const messageText = $(element);
+							const replacedMessage = messageText
+								.html()
+								?.replace(/<br\/?>/g, "\n");
+							const tempMessage = cheerio.load(replacedMessage || "");
+							const correctMessage = tempMessage.text();
+							const lines = Array(correctMessage.trim().split("\n"));
+
+							const allLinksShort = lines
+								.filter(Array.isArray)
+								.flatMap((items) => {
+									const allProtocolsMatches = items.filter((data) => {
+										return PROTOCOLS.some((protocol) =>
+											data.startsWith(protocol)
+										);
+									});
+
+									arrayProxies.push(...allProtocolsMatches);
+
+									return Array(allProtocolsMatches).flat();
+								});
+						}
+					);
+
+					spinner.succeed(
+						`Crawled ${channel.id} with ${arrayProxies.length} configs!`
+					);
+
+					await FileFramework.writeHtmlToFile(arrayProxies.join("\n"), {
+						prefix: `${channel.id}`,
+					});
+				}
+			}
+		} catch (_error) {
+			console.error("Error while scraping");
 		}
 	}
 
