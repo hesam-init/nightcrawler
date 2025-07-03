@@ -1,11 +1,8 @@
 import { HttpStatusCode } from "axios";
 import chalk from "chalk";
 import * as cheerio from "cheerio";
-import type {
-	ChannelsCsvSchema,
-	ChannelsListCsvSchema,
-	CsvSchema,
-} from "types/env";
+import ora from "ora";
+import type { ChannelsListCsvSchema } from "types/env";
 import { FileFramework } from "@/frameworks/file/file.framework";
 import { TelegramFramework } from "../axios/telegram.framework";
 
@@ -24,7 +21,7 @@ interface MyRegex {
 const PROTCOLS = ["vless", "vmess", "ss", "trojan"];
 
 const telegramService = new TelegramFramework({
-	debug: true,
+	debug: false,
 });
 
 // await telegramService.init();
@@ -117,17 +114,31 @@ export class V2RayCollector {
 					let currentPage: number = 0;
 					const maxPages: number = channel.maxPages || this.maxPages;
 
-					console.log(
-						chalk.bgYellow.white.bold(
-							`Crawling ===> ${channel.id} : Max Pages = ${maxPages} \n`
-						)
-					);
+					if (maxPages <= 0) {
+						console.log(
+							chalk.bgRed.white.bold(
+								`Max Pages is less than or equal to 0 for channel: ${channel.id}`
+							)
+						);
+
+						continue;
+					}
+
+					console.log("\n\n---------------------------------------");
+
+					const spinner = ora(`Crawling ${channel.id}`).start();
+
+					// console.log(
+					// 	chalk.bgYellow.white.bold(
+					// 		`Crawling ===> ${channel.id} : Max Pages = ${maxPages} \n`
+					// 	)
+					// );
 
 					while (currentPage < maxPages) {
-						console.log(`Current Page => ${currentPage + 1}`);
+						// console.log(`Current Page => ${currentPage + 1}`);
+						spinner.text = `Crawling ${channel.id} - Page ${currentPage + 1}`;
 
 						const paginatedLink = `${channel.id}${beforeIndex === 0 ? "" : `?before=${beforeIndex - 20}`}`;
-
 						const response = await telegramService.get<string>(paginatedLink, {
 							returnConfig: true,
 						});
@@ -208,6 +219,10 @@ export class V2RayCollector {
 									return Array(allProtocolsMatches).flat();
 								});
 						}
+					);
+
+					spinner.succeed(
+						`Crawled ${channel.id} with ${arrayData.length} configs!`
 					);
 
 					await FileFramework.writeHtmlToFile(arrayData.join("\n"));

@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import { type TypeOf, z } from "zod";
+import { env } from "./env";
 
 export type EnvSchema = TypeOf<typeof zodEnv>;
 
@@ -25,15 +26,16 @@ export const zodEnv = z.object({
 		)
 		.optional(),
 
-	// .min(1, "MODEM_PASSWORD is required and cannot be empty"),
-	// MODEM_MODEL: z.enum(SUPPORTED_MODELS, {
-	//    required_error: "MODEM_MODEL is required",
+	// PROTOCOLS: z.enum(SUPPORTED_PROTOCOLS, {
+	//    required_error: "PROTOCOLS is required",
 	// }),
 });
 
 export function envValidation(): Promise<EnvSchema> {
 	return new Promise((resolve, reject) => {
-		const parsed = zodEnv.safeParse(process.env);
+		const parsed = zodEnv.safeParse({
+			...env,
+		});
 
 		if (!parsed.success) {
 			parsed.error.issues.map((issue) => {

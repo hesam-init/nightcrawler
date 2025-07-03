@@ -25,7 +25,7 @@ async function main() {
 			`Processing ${domains.length} domains with concurrency limit...`
 		);
 
-		const resolver = new DNSBatchResolver(["127.0.0.1"]);
+		const resolver = new DNSBatchResolver(["8.8.8.8"]);
 		const concurrency = 16;
 
 		// Use semaphore approach for better concurrency control
