@@ -225,7 +225,9 @@ export class V2RayCollector {
 						`Crawled ${channel.id} with ${arrayData.length} configs!`
 					);
 
-					await FileFramework.writeHtmlToFile(arrayData.join("\n"));
+					await FileFramework.writeHtmlToFile(arrayData.join("\n"), {
+						prefix: `${channel.id}`,
+					});
 
 					// console.log("\n\n---------------------------------------");
 					// console.log(`Crawling ${channel.id}`);

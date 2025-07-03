@@ -151,7 +151,7 @@ export class TelegramFramework {
 		// return Promise.reject(error);
 
 		console.error(
-			chalk.bgRed.white.bold(`ERROR while fetching ${config.url} \n`)
+			chalk.bgRed.white.bold(`\nERROR while fetching ${config.url} \n`)
 		);
 
 		// console.log(error);
