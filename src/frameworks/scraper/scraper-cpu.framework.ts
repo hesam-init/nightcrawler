@@ -68,13 +68,14 @@ export class V2RayCollector {
 	async mainFullyConcurrent(): Promise<void> {
 		try {
 			if (this.telegram) {
+				await telegramService.init();
+
 				const fileData = await FileFramework.readFileContent(
 					"assets/channels-list.csv"
 				);
 
 				const channels =
 					FileFramework.parseCSV<ChannelsListCsvSchema>(fileData);
-				await telegramService.init();
 
 				console.log(
 					`Processing ${channels.length} channels with ${this.maxConcurrency} concurrent workers`
@@ -101,13 +102,16 @@ export class V2RayCollector {
 
 	// Process channels in concurrent batches
 	private async processBatches(
-		channels: ChannelsListCsvSchema[],
+		channels: ChannelsListCsvSchema,
 		batchSize: number
 	): Promise<PromiseSettledResult<any>[]> {
 		const results: PromiseSettledResult<any>[] = [];
 
 		for (let i = 0; i < channels.length; i += batchSize) {
 			const batch = channels.slice(i, i + batchSize);
+
+			console.log(batch);
+
 			console.log(
 				`\nProcessing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(channels.length / batchSize)}`
 			);
@@ -119,7 +123,6 @@ export class V2RayCollector {
 			const batchResults = await Promise.allSettled(batchPromises);
 			results.push(...batchResults);
 
-			// Optional: Add a small delay between batches to prevent overwhelming the server
 			if (i + batchSize < channels.length) {
 				await this.delay(100);
 			}

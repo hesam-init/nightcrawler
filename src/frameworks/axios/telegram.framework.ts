@@ -8,7 +8,6 @@ import Axios, {
 } from "axios";
 import chalk from "chalk";
 import ora from "ora";
-import { ProxyAgent } from "proxy-agent";
 import { env } from "@/bootstrap/env";
 import type { ApiResponse } from "./telegram.types";
 
@@ -28,13 +27,14 @@ export type ServiceConfig = {
 export class TelegramFramework {
 	public http: AxiosInstance;
 
+	private proxyTestTimeout: number = 3000;
 	private defaultConfig: CreateAxiosDefaults = {
 		baseURL: env.TELEGRAM_BASE_URL,
 		timeout: 6000,
 	};
 
-	public debugMode = false;
-	public sessionCookie = "";
+	public debugMode: boolean = false;
+	public sessionCookie: string = "";
 
 	constructor(config?: ServiceConfig) {
 		this.debugMode = config?.debug || false;
@@ -64,10 +64,10 @@ export class TelegramFramework {
 
 	public async init() {
 		if (env.PROXY_URL) {
-			const passed = await this.testProxy();
+			const proxyTest = await this.testProxy();
 
-			if (!passed) {
-				throw new Error("Proxy Test Failed. Aborting initialization.");
+			if (!proxyTest) {
+				process.exit(0);
 			}
 		}
 	}
@@ -75,16 +75,13 @@ export class TelegramFramework {
 	private async testProxy() {
 		const spinner = ora(`Testing Proxy ${env.PROXY_URL}`).start();
 
-		const proxyInstance = Axios.create(this.defaultConfig);
+		const proxyInstance = Axios.create({
+			...this.defaultConfig,
+			timeout: this.proxyTestTimeout,
+		});
 
 		try {
 			const response = await proxyInstance.get("/");
-
-			// console.log(
-			// 	chalk.bgGreen.white.bold(
-			// 		`Proxy Test Success: ${response.status} ${response.statusText}\n`
-			// 	)
-			// );
 
 			spinner.succeed(`Proxy Test Success ${response.status}`);
 
